@@ -1,0 +1,38 @@
+name: Method question
+description: A convention or assumption treats a product unfairly, or is unclear.
+title: "Method: "
+labels: ["method"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The conventions are the same for every backend: a 30-day month, decimal gigabytes of
+        uncompressed data as sent over OTLP, public list price, and the same data kept
+        searchable for the same time everywhere. A method changes for every backend at once,
+        never for one, after seven days of public comment.
+  - type: textarea
+    id: what
+    attributes:
+      label: Which convention or assumption
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What goes wrong
+      description: Which backends it affects, and how. Public pages that show the problem help most.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would do instead
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Do you work for a vendor priced here?
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true

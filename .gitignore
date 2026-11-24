@@ -1,0 +1,11 @@
+node_modules
+build
+.react-router
+.DS_Store
+*.log
+
+# Written by `npm run data` from the adapters; never edited by hand.
+public/data
+
+# The CI tools (scripts/ci/tools.sh)
+.tools/

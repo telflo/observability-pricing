@@ -1,0 +1,3 @@
+# LF in the repository and on every checkout, whatever the platform's
+# default: the CI runners, the tests and the generated data all read LF.
+* text=auto eol=lf

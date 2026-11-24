@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to fix a price or add a backend
+    url: https://observabilitypricing.org/contribute
+    about: The short version of CONTRIBUTING.md.

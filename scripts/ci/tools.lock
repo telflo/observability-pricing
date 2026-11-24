@@ -1,0 +1,14 @@
+# The CI's pinned tools, read by scripts/ci/tools.sh. Nothing here is
+# installed system-wide: tools.sh fetches each into the git-ignored .tools/
+# and checks it against the sha256 below before it may run. A runner and a
+# laptop install the same versions with the same sums.
+#
+# tool <name> <version> <os-arch> <url> <sha256> <sums file> <member> <binary sha256>
+#   <sha256> is the downloaded archive's, as the project publishes it in
+#   <sums file> (a file of that release); <member> is the one file taken from
+#   the .tar.gz; <binary sha256> is that member's own sha256, which
+#   `tools.sh path` checks the installed binary against every time.
+#   gitleaks: the release's gitleaks_<version>_checksums.txt (the same pins as
+#   telflo/telflo's scripts/release/tools.lock).
+tool gitleaks v8.30.1 darwin-arm64 https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5 gitleaks_8.30.1_checksums.txt gitleaks ba52fb1bfabbcde42f032afad3d6e0b19dff8ed105229a16e7caa338bbc0e84f
+tool gitleaks v8.30.1 linux-amd64 https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb gitleaks_8.30.1_checksums.txt gitleaks 88f91962aa2f93ac6ab281d553b9e125f5197bbbce38f9f2437f7299c32e5509

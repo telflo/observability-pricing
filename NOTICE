@@ -1,0 +1,10 @@
+Observability Pricing
+Copyright 2026 Telflo, Inc.
+
+Licensed under the Apache License, Version 2.0 (see LICENSE). This covers
+the code and the price data (the sources and rates in app/pricing/vendors and
+the files generated from them in public/data).
+
+Product and company names are trademarks of their owners. They are used here
+only to say whose public prices are shown. No endorsement is implied in either
+direction.

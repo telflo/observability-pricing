@@ -1,0 +1,59 @@
+name: Price correction
+description: A price here is wrong or out of date.
+title: "<backend>: "
+labels: ["price"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks. We can only use prices from a public page anyone can open without an account.
+        If you can, change the number yourself: every backend's page on the site has an
+        "Edit these prices" button.
+  - type: input
+    id: backend
+    attributes:
+      label: Backend
+      placeholder: Datadog
+    validations:
+      required: true
+  - type: input
+    id: rate
+    attributes:
+      label: Which price
+      description: The name of the rate as it appears on the backend's page.
+      placeholder: Log ingestion
+    validations:
+      required: true
+  - type: input
+    id: shown
+    attributes:
+      label: What the site shows
+      placeholder: $0.10 per GB ingested
+  - type: input
+    id: correct
+    attributes:
+      label: What it should be
+      placeholder: $0.12 per GB ingested
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: The public page that shows it
+      placeholder: https://
+    validations:
+      required: true
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Do you work for this vendor?
+      description: Either answer is fine. It is recorded so readers know.
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else

@@ -1,0 +1,49 @@
+name: Stale prices
+
+# Once a week, list the backends whose pricing pages have not been re-read in
+# 90 days and open (or update) one issue asking for a re-read.
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: List stale backends
+        id: stale
+        run: |
+          set +e
+          npm run --silent stale > stale.txt
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          cat stale.txt
+          # 0 is nothing stale and 1 is a list, handled below. Anything else
+          # is the script failing, which must not pass for "nothing stale".
+          if [ "$code" -gt 1 ]; then exit "$code"; fi
+      - name: Open or update the issue
+        if: steps.stale.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # An issue can only carry a label that exists. Creating it again fails harmlessly.
+          gh label create "stale prices" --color FBCA04 --description "Pricing pages due for a re-read" || true
+          existing=$(gh issue list --label "stale prices" --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file stale.txt
+          else
+            gh issue create --title "Pricing pages to re-read" --label "stale prices" --body-file stale.txt
+          fi

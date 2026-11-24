@@ -1,0 +1,46 @@
+{
+  "name": "observability-pricing",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "An open price book for observability backends: one telemetry workload, priced at each backend's public list price.",
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "npm run data && react-router build",
+    "typecheck": "react-router typegen && tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "data": "tsx scripts/export-data.ts",
+    "stale": "tsx scripts/stale.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.2.5",
+    "@fontsource-variable/public-sans": "^5.2.5",
+    "@react-router/node": "^7.12.0",
+    "isbot": "^5.1.31",
+    "lucide-react": "^0.548.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router": "^7.12.0"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7.12.0",
+    "@tailwindcss/vite": "^4.1.13",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^22",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "jsdom": "^27.0.1",
+    "tailwindcss": "^4.1.13",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.3.1",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.12"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

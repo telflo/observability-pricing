@@ -1,0 +1,53 @@
+name: New backend
+description: A product with public prices that is not listed yet.
+title: "Add <backend>"
+labels: ["new backend"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We can price a product only from pages anyone can open without an account. A product
+        whose prices are by quote is listed as "not priced", with the reason.
+        CONTRIBUTING.md shows how to write the adapter yourself.
+  - type: input
+    id: name
+    attributes:
+      label: Product
+      description: The product name as the vendor writes it.
+    validations:
+      required: true
+  - type: input
+    id: pricing
+    attributes:
+      label: Public pricing page
+      placeholder: https://
+    validations:
+      required: true
+  - type: checkboxes
+    id: signals
+    attributes:
+      label: Which signals have a public price
+      options:
+        - label: Logs
+        - label: Metrics
+        - label: Traces
+  - type: textarea
+    id: meters
+    attributes:
+      label: How it bills
+      description: The units on the pricing page (GB ingested, hosts, events, seats and so on), and any other public pages that explain them.
+  - type: input
+    id: example
+    attributes:
+      label: A worked example from the vendor
+      description: A page or calculator where the vendor itself works out a bill. It becomes the adapter's test.
+      placeholder: https://
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Do you work for this vendor?
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true

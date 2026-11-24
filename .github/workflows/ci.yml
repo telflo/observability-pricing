@@ -1,0 +1,95 @@
+# CI: every pull request runs the quick pipeline; every push to main (a
+# merged pull request) runs the full one. It holds no secret and writes
+# nothing: every job reads the repository only (contents: read), and a pull
+# request from a fork runs exactly as one from this repository, once a
+# maintainer approves its first run. Every action is pinned by commit sha
+# (the repository allows only these pinned actions).
+#
+#   pull request: secrets (gitleaks on the tree), check (typecheck, tests,
+#                 build) on Node 22
+#   main:         the same, plus the secret scan over the full git history
+#                 and the check on every Node version package.json's
+#                 engines allows (20, 22 and 24)
+#
+# `ci` waits for every job and is the one check main's branch protection
+# requires, so adding or splitting a job never needs a settings change.
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+# A pull request's newer push cancels its older run; main's runs never
+# cancel each other (each push is its own group).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # The secret scan alone, so a leak (or a reviewed fake whose line moved,
+  # which .gitleaksignore must follow) fails within a minute. On main it
+  # also scans every commit: once public, the history is published too.
+  secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The full history on main ('0', a string: the number 0 is falsy
+          # in an expression and would fall through to '1').
+          fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
+      - run: bash scripts/ci/tools.sh fetch gitleaks
+      - name: The secret scan (the tree)
+        run: bash scripts/ci/check-secrets.sh
+      - name: The secret scan (the full history)
+        if: github.event_name == 'push'
+        run: bash scripts/ci/check-secrets.sh --history
+
+  # Typecheck, every adapter's contract checks and worked examples, the
+  # component tests, then the build, which renders every page: a broken
+  # backend page fails here and not in production.
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ${{ github.event_name == 'push' && fromJSON('["20", "22", "24"]') || fromJSON('["22"]') }}
+    name: check (node ${{ matrix.node }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  # The one required check: it passes only when every job above passed (a
+  # failed, canceled or skipped job fails it).
+  ci:
+    needs: [secrets, check]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      RESULTS: ${{ join(needs.*.result, ' ') }}
+    steps:
+      - name: Every job passed
+        run: |
+          echo "results: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = success ] || { echo "a job ended $result"; exit 1; }
+          done

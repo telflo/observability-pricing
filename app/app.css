@@ -1,0 +1,205 @@
+@import "tailwindcss";
+@import "@fontsource-variable/public-sans";
+@import "@fontsource-variable/jetbrains-mono";
+
+/*
+ * The look: a public rate book. Ink on paper, hairlines, and no accent color.
+ * Links and buttons are ink, so the only colors on a page are the ones that
+ * carry data: one hue per signal.
+ */
+
+@theme {
+  --font-sans: "Public Sans Variable", "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Public Sans Variable", "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  /* Receipts are set in mono: figures line up and the arithmetic reads as a bill. */
+  --font-tech: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
+  /* Theme tokens point at runtime variables so both color schemes share one set of utilities. */
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  /* The calculator's components name their emphasis color "azure". Here it is ink. */
+  --color-azure: var(--ink);
+  --color-azure-2: var(--ink-2);
+
+  /* One hue per signal, grey for fees tied to none. Checked for color-vision
+     separation on both surfaces: see CONTRIBUTING.md before changing them. */
+  --color-sig-logs: var(--sig-logs);
+  --color-sig-metrics: var(--sig-metrics);
+  --color-sig-traces: var(--sig-traces);
+  --color-sig-profiles: var(--sig-profiles);
+  --color-sig-platform: var(--sig-platform);
+}
+
+/* Light is the default for everyone. Dark is the reader's choice (app/theme.ts),
+   so the system setting is deliberately not read here. */
+:root {
+  color-scheme: light;
+  --paper: #fbfbfa;
+  --paper-2: #f2f3f1;
+  --ink: #15181b;
+  --ink-2: #3c4349;
+  --ink-3: #5b646b;
+  --line: #e1e3df;
+  --line-2: #c5c9c3;
+  --sig-logs: #4f46e5;
+  --sig-metrics: #0f9d8a;
+  --sig-traces: #c98500;
+  --sig-profiles: #c0267a;
+  --sig-platform: #8d95a1;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0f1214;
+  --paper-2: #161a1d;
+  --ink: #e8ecee;
+  --ink-2: #a9b3ba;
+  --ink-3: #7d8990;
+  --line: #232a2f;
+  --line-2: #38424a;
+  --sig-logs: #6f7df2;
+  --sig-metrics: #17a391;
+  --sig-traces: #c98500;
+  --sig-profiles: #e0579f;
+  --sig-platform: #66728a;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-line);
+  }
+
+  html {
+    background-color: var(--color-paper);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--sig-logs) 28%, transparent);
+    color: var(--color-ink);
+  }
+}
+
+/* Log-scale sliders in the workload form. */
+.opc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  /* Taller than the 3px track it draws, so a thumb is easy to land on. */
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  --fill: 50%;
+}
+.opc-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--color-ink) var(--fill), var(--color-line-2) var(--fill));
+}
+.opc-range::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-line-2);
+}
+.opc-range::-moz-range-progress {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-ink);
+}
+.opc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6.5px;
+  border-radius: 9999px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+.opc-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-paper);
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+.opc-range:hover::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+.opc-range:hover::-moz-range-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+.opc-range:active::-webkit-slider-thumb {
+  background: var(--color-ink);
+}
+.opc-range:active::-moz-range-thumb {
+  background: var(--color-ink);
+}
+.opc-range:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.opc-range:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* The form scrolls inside itself beside the results; keep its scrollbar quiet. */
+.opc-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-2) transparent;
+}
+
+/* Bar segments grow and shrink as the inputs move. */
+.opc-seg {
+  transition: flex-grow 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.opc-bar {
+  transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .opc-seg,
+  .opc-bar {
+    transition: none;
+  }
+}
