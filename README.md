@@ -69,7 +69,7 @@ No vendor pays to be listed or to change a number. See [GOVERNANCE.md](GOVERNANC
 
 Contact: open an issue.
 
-## Licence
+## License
 
 Code and price data under the Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 Product names belong to their owners.
