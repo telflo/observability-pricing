@@ -59,17 +59,17 @@ jobs:
 
   # Every CI gate on the tag's commit: the secret scan over the tree and the
   # full history, the typecheck, the tests and the build on Node 20, 22 and
-  # 24, the release scripts' tests, npm audit and CodeQL. A called workflow
-  # gets no permission its caller doesn't grant: CodeQL's job writes its
-  # results to the Security tab.
+  # 24, the release scripts' tests, npm audit and CodeQL. ci.yml takes no
+  # ref: it checks out the commit the tag's push names, github.sha, the one
+  # the version job checked (--expect). A called workflow gets no permission
+  # its caller doesn't grant: CodeQL's job writes its results to the
+  # Security tab.
   ci:
     needs: version
     permissions:
       contents: read
       security-events: write
     uses: ./.github/workflows/ci.yml
-    with:
-      ref: ${{ needs.version.outputs.commit }}
 
   # The GitHub Release, after every gate passed. The `release` environment
   # admits only v* tags (a repository setting), and its reviewer approves

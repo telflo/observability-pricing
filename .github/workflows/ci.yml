@@ -15,8 +15,11 @@
 #                 and the check on every Node version package.json's
 #                 engines allows (20, 22 and 24). A push to main keeps the
 #                 built site as the run's artifact.
-#   release:      release.yml calls this workflow on its tag's commit
-#                 (workflow_call, `ref`). The run's event is the tag's push.
+#   release:      release.yml calls this workflow (workflow_call). The run's
+#                 event is the tag's push, so every checkout below is the
+#                 tag's commit (github.sha, which release.yml's version job
+#                 checked). It takes no ref: every job checks out the commit
+#                 its event names, and nothing else.
 #
 # `ci` waits for every job and is the one check main's branch protection
 # requires, so adding or splitting a job never needs a settings change.
@@ -28,18 +31,13 @@ on:
   schedule:
     - cron: "17 6 * * 1"
   workflow_call:
-    inputs:
-      ref:
-        description: The commit to check out (release.yml passes its tag's)
-        type: string
-        required: true
 
 permissions: {}
 
 # A pull request's newer push cancels its older run; main's, the weekly and
 # a release's runs always finish (each its own group).
 concurrency:
-  group: ci-${{ inputs.ref && format('release-{0}', inputs.ref) || github.event.pull_request.number || format('{0}-{1}', github.event_name, github.sha) }}
+  group: ci-${{ github.event.pull_request.number || format('{0}-{1}-{2}', github.event_name, github.ref, github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -54,7 +52,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
           # The full history on a full run ('0', a string: the number 0 is
           # falsy in an expression and would fall through to '1').
@@ -84,7 +81,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -115,7 +111,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -135,7 +130,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -163,7 +157,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
           persist-credentials: false
       - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
