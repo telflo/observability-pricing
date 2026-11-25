@@ -1,5 +1,10 @@
 # Observability Pricing
 
+[![CI](https://github.com/telflo/observability-pricing/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/telflo/observability-pricing/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/telflo/observability-pricing)](https://github.com/telflo/observability-pricing/releases/latest)
+[![Node](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftelflo%2Fobservability-pricing%2Fmain%2Fpackage.json&query=%24.engines.node&label=node)](package.json)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 Price one telemetry workload (logs, metrics, traces, hosts, seats) at each observability
 platform's public list price. Every rate links to the vendor page it came from.
 

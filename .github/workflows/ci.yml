@@ -1,15 +1,22 @@
-# CI: every pull request runs the quick pipeline; every push to main (a
-# merged pull request) runs the full one. It holds no secret and writes
-# nothing: every job reads the repository only (contents: read), and a pull
-# request from a fork runs exactly as one from this repository, once a
-# maintainer approves its first run. Every action is pinned by commit sha
-# (the repository allows only these pinned actions).
+# CI: the gates every change passes. Every pull request runs the quick
+# pipeline; every push to main (a merged pull request), the weekly run (npm
+# audit's and CodeQL's answers change as advisories are published) and a
+# release run the full one. It holds no secret, and writes nothing but CodeQL's
+# results to the Security tab: every other job reads the repository only
+# (contents: read). A pull request from a fork runs exactly as one from this
+# repository, once a maintainer approves its first run. Every action is
+# pinned by commit sha (the repository allows only these pinned actions).
 #
 #   pull request: secrets (gitleaks on the tree), check (typecheck, tests,
-#                 build) on Node 22
-#   main:         the same, plus the secret scan over the full git history
+#                 build) on Node 22, scripts (the release scripts' tests),
+#                 audit (npm's advisories and registry signatures), codeql
+#                 (the TypeScript and these workflows)
+#   full:         the same, plus the secret scan over the full git history
 #                 and the check on every Node version package.json's
-#                 engines allows (20, 22 and 24)
+#                 engines allows (20, 22 and 24). A push to main keeps the
+#                 built site as the run's artifact.
+#   release:      release.yml calls this workflow on its tag's commit
+#                 (workflow_call, `ref`). The run's event is the tag's push.
 #
 # `ci` waits for every job and is the one check main's branch protection
 # requires, so adding or splitting a job never needs a settings change.
@@ -18,18 +25,26 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit to check out (release.yml passes its tag's)
+        type: string
+        required: true
 
 permissions: {}
 
-# A pull request's newer push cancels its older run; main's runs never
-# cancel each other (each push is its own group).
+# A pull request's newer push cancels its older run; main's, the weekly and
+# a release's runs always finish (each its own group).
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.sha }}
+  group: ci-${{ inputs.ref && format('release-{0}', inputs.ref) || github.event.pull_request.number || format('{0}-{1}', github.event_name, github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # The secret scan alone, so a leak (or a reviewed fake whose line moved,
-  # which .gitleaksignore must follow) fails within a minute. On main it
+  # which .gitleaksignore must follow) fails within a minute. A full run
   # also scans every commit: once public, the history is published too.
   secrets:
     runs-on: ubuntu-24.04
@@ -39,20 +54,23 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
-          # The full history on main ('0', a string: the number 0 is falsy
-          # in an expression and would fall through to '1').
-          fetch-depth: ${{ github.event_name == 'push' && '0' || '1' }}
+          # The full history on a full run ('0', a string: the number 0 is
+          # falsy in an expression and would fall through to '1').
+          fetch-depth: ${{ github.event_name != 'pull_request' && '0' || '1' }}
       - run: bash scripts/ci/tools.sh fetch gitleaks
       - name: The secret scan (the tree)
         run: bash scripts/ci/check-secrets.sh
       - name: The secret scan (the full history)
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         run: bash scripts/ci/check-secrets.sh --history
 
   # Typecheck, every adapter's contract checks and worked examples, the
   # component tests, then the build, which renders every page: a broken
-  # backend page fails here and not in production.
+  # backend page fails here and not in production. A push to main keeps the
+  # built site (Node 22's) as the run's artifact: every page and the data
+  # files, as they would be hosted.
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -61,11 +79,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ${{ github.event_name == 'push' && fromJSON('["20", "22", "24"]') || fromJSON('["22"]') }}
+        node: ${{ github.event_name != 'pull_request' && fromJSON('["20", "22", "24"]') || fromJSON('["22"]') }}
     name: check (node ${{ matrix.node }})
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -75,11 +94,89 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.node == '22'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: observability-pricing-site
+          path: build/client/
+          if-no-files-found: error
+          retention-days: 30
+
+  # The dependencies, the build's tools included, against the npm registry:
+  # npm audit fails on any published advisory, of any severity, and npm
+  # audit signatures on a package whose registry signature or provenance
+  # attestation doesn't verify. Weekly too: an advisory can be published
+  # when nothing here changed.
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm audit
+      - run: npm audit signatures
+
+  # The release scripts' tests (scripts/release), so a broken tag check or
+  # notes script fails a pull request and not a release.
+  scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - run: bash scripts/release/verify-tag.test.sh
+      - run: bash scripts/release/notes.test.sh
+
+  # CodeQL's code scanning, of the TypeScript and of these workflows, with
+  # its default queries. The job passes when the analysis runs; what it
+  # finds goes to the Security tab, and GitHub's own "CodeQL" check on a pull
+  # request lists the alerts the change adds. The category is GitHub's
+  # default setup's, so alerts keep their history. That setup must stay off
+  # (Settings → Code security): it refuses uploads from a workflow.
+  codeql:
+    name: codeql (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, javascript-typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:${{ matrix.language }}
 
   # The one required check: it passes only when every job above passed (a
   # failed, canceled or skipped job fails it).
   ci:
-    needs: [secrets, check]
+    needs: [secrets, check, scripts, audit, codeql]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5

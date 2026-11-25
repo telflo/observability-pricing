@@ -240,9 +240,21 @@ npm run build
 
 `npm run stale` lists the platforms whose pages have not been re-read in 90 days.
 
-CI runs on every pull request: the secret scan, then the typecheck, the tests and the build. After
-a merge, main runs the same on Node 20, 22 and 24, and scans the full git history for secrets. To
-run the secret scan yourself (gitleaks, pinned and checked by sha256, into the git-ignored
+CI runs on every pull request: the secret scan; the typecheck, the tests and the build; the
+release scripts' tests (`scripts/release/*.test.sh`); `npm audit` and `npm audit signatures`;
+and CodeQL, whose findings go to the Security tab. After a merge, main runs the same on Node 20,
+22 and 24, scans the full git history for secrets, and keeps the built site as the run's
+artifact for 30 days. It runs again every Monday, since new advisories appear when nothing here
+changed.
+
+To check the dependencies yourself:
+
+```bash
+npm audit
+npm audit signatures
+```
+
+To run the secret scan yourself (gitleaks, pinned and checked by sha256, into the git-ignored
 `.tools/`):
 
 ```bash
@@ -253,6 +265,57 @@ bash scripts/ci/check-secrets.sh --history  # every commit
 
 A made-up value that gitleaks flags in a test is listed in `.gitleaksignore` after review. Never
 list a real credential: remove it, and rotate it.
+
+## Releasing
+
+A release is one version, `x.y.z` (digits only, no leading zeros), tagged `v<x.y.z>` on a
+commit of main. Its [GitHub release](https://github.com/telflo/observability-pricing/releases)
+holds that version's `rates.json` and `rates.csv` (the files the site serves at `/data`) with
+their `SHA256SUMS`, and its CHANGELOG.md entry as the notes. A published version is never
+changed: a fix is a new version.
+
+The version says what changed for someone reading the data files: a patch for price
+corrections and re-reads, a minor version for a new platform, signal or method, a major version
+for a change to `rates.json`'s or `rates.csv`'s fields.
+
+**1. The version, through a pull request.** On a branch, set the version in package.json and
+package-lock.json, and move CHANGELOG.md's Unreleased entries under the version's heading, dated
+the day you release, `## 0.2.0 - 2026-12-01`. Then commit:
+
+```bash
+npm version 0.2.0 --no-git-tag-version
+git commit -m "Release 0.2.0" -- package.json package-lock.json CHANGELOG.md
+```
+
+The release commit lands on main through a pull request, reviewed like any other change.
+
+**2. The tag**, after the merge: annotated, on the commit of main that holds the new version,
+with the message `observability-pricing <version>`. Only a maintainer can push a `v*` tag, and
+none can be moved or deleted once pushed (the `release tags` ruleset). Only the tag is pushed:
+
+```bash
+git switch main
+git pull --ff-only origin main
+git tag -a v0.2.0 -m "observability-pricing 0.2.0"
+git push origin v0.2.0
+```
+
+**3. The release workflow** (`.github/workflows/release.yml`) starts on the tag. It refuses a
+tag that isn't `v<x.y.z>`, isn't annotated, isn't on main, or doesn't match package.json,
+package-lock.json and a dated CHANGELOG.md entry at its commit
+(`scripts/release/verify-tag.sh`). It then runs main's full CI on the tag's commit. Once that
+passes, the `release` environment's reviewer approves the last job, which makes the GitHub
+release (`scripts/release/github-release.sh`).
+
+If a run fails for a reason outside the commit (a runner, the network), use "Re-run failed jobs": a release
+that exists already is never made again. If it fails on the tag's commit, fix it on main and
+release the next version: the tag can't be moved.
+
+To see a release's notes before you tag it:
+
+```bash
+bash scripts/release/notes.sh 0.2.0
+```
 
 ## The site
 
