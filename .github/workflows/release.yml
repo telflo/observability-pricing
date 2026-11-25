@@ -1,0 +1,101 @@
+# A release, from its annotated tag v<version> on main (CONTRIBUTING.md,
+# "Releasing"): the tag checked before anything else runs, then every CI
+# gate on the tag's commit (ci.yml, main's full pipeline), then the GitHub
+# Release v<version>: that version's rates.json and rates.csv with their
+# SHA256SUMS, and its CHANGELOG.md entry as the notes. A published version is
+# never changed: a fix is a new version.
+#
+# Every `run:` is one call of a committed script; values reach a script only
+# through `env:`, never `${{ }}` inside `run:`. Every action is pinned by
+# commit sha (the repository allows only these pinned actions).
+#
+# There is no workflow_dispatch: a run that stopped part way is resumed with
+# "Re-run failed jobs", and a Release that exists already is never made
+# again.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+# One release at a time, never canceled part way. A newer run waiting for the
+# group cancels an older waiting one (GitHub's rule): push one release tag at
+# a time.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Refused before anything runs: a tag that isn't v<x.y.z>, isn't annotated,
+  # isn't on main, or doesn't match package.json, package-lock.json and a
+  # dated CHANGELOG.md entry at its commit (scripts/release/verify-tag.sh).
+  # The full history (fetch-depth 0) brings main for the ancestry check.
+  version:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      commit: ${{ steps.tag.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - name: The tag
+        id: tag
+        env:
+          TAG: ${{ github.ref_name }}
+          EXPECT: ${{ github.sha }}
+        run: bash scripts/release/verify-tag.sh "$TAG" --fetch --expect "$EXPECT"
+
+  # Every CI gate on the tag's commit: the secret scan over the tree and the
+  # full history, the typecheck, the tests and the build on Node 20, 22 and
+  # 24, the release scripts' tests, npm audit and CodeQL. ci.yml takes no
+  # ref: it checks out the commit the tag's push names, github.sha, the one
+  # the version job checked (--expect). A called workflow gets no permission
+  # its caller doesn't grant: CodeQL's job writes its results to the
+  # Security tab.
+  ci:
+    needs: version
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/ci.yml
+
+  # The GitHub Release, after every gate passed. The `release` environment
+  # admits only v* tags (a repository setting), and its reviewer approves
+  # this job. The only token is this job's GITHUB_TOKEN, given to the one
+  # step that needs it: never to npm ci, and never left in .git/config.
+  publish:
+    needs: [version, ci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: write # the GitHub Release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.version.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: The GitHub Release (last)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: bash scripts/release/github-release.sh
