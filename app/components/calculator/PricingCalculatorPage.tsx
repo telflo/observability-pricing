@@ -197,7 +197,7 @@ export function PricingCalculatorPage({ initial }: { initial: CalculatorState })
               className="size-28 shrink-0 border-[3px] border-[#c0c0c0] [border-style:ridge] [image-rendering:pixelated] sm:size-40 md:size-52"
             />
           </div>
-          <p className="mt-6 text-[13.5px] text-ink-3">Every rate checked on or after {formatDay(FIRST_CHECKED)}</p>
+          <p className="mt-6 text-[13.5px] text-ink-3">Rates last checked {formatDay(FIRST_CHECKED)}</p>
         </div>
       </section>
 
