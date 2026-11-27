@@ -16,7 +16,7 @@ export const SITE = {
    * True until the repository is public and the domain is live. While it is,
    * a strip at the top says the repository links do not work yet.
    */
-  preview: true,
+  preview: false,
 } as const;
 
 /** Where one platform's prices live in the repository. */
